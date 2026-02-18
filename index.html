@@ -15,10 +15,9 @@
     <h1 class="text-2xl sm:text-3xl font-bold text-slate-800">
       📊 Dashboard Notes
     </h1>
-    <p class="text-slate-500 text-sm">Calcul automatique par formule</p>
   </div>
 
-  <!-- Stats Responsive -->
+  <!-- Stats -->
   <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
 
     <div class="bg-white p-4 rounded-xl shadow">
@@ -43,23 +42,28 @@
 
   </div>
 
-  <!-- Layout principal -->
   <div class="grid lg:grid-cols-3 gap-6">
 
-    <!-- Paramètres -->
+    <!-- Partie gauche -->
     <div class="bg-white p-6 rounded-2xl shadow">
 
-      <h2 class="font-semibold mb-4 text-slate-700">Paramètres</h2>
+      <!-- Dernier résultat -->
+      <div class="mb-6 text-center">
+        <p class="text-xs text-slate-500">Dernier résultat</p>
+        <h2 id="lastResult" class="text-3xl font-bold text-blue-600">
+          0,00
+        </h2>
+      </div>
 
       <input type="text" id="formula"
         placeholder="Ex: 15/31"
-        class="w-full px-4 py-2 border rounded-xl mb-4 focus:ring-2 focus:ring-blue-400 focus:outline-none">
+        class="w-full px-4 py-2 border rounded-xl mb-4 focus:ring-2 focus:ring-blue-400">
 
       <form id="noteForm">
         <input type="number" step="any" id="note"
           placeholder="Entrer une note"
           required
-          class="w-full px-4 py-2 border rounded-xl mb-4 focus:ring-2 focus:ring-blue-400 focus:outline-none">
+          class="w-full px-4 py-2 border rounded-xl mb-4 focus:ring-2 focus:ring-blue-400">
 
         <button class="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-xl transition transform hover:scale-105">
           Ajouter
@@ -88,14 +92,56 @@ const totalNotesEl = document.getElementById("totalNotes");
 const averageEl = document.getElementById("average");
 const bestEl = document.getElementById("best");
 const lowestEl = document.getElementById("lowest");
+const lastResultEl = document.getElementById("lastResult");
 
 let numerator = null;
 let denominator = null;
 let resultsArray = [];
 
-// Formule
-formulaInput.addEventListener("change", () => {
-  const formula = formulaInput.value.trim();
+/* ---------- Animation chiffre ---------- */
+function animateValue(element, start, end, duration = 600) {
+  let startTime = null;
+
+  function animation(currentTime) {
+    if (!startTime) startTime = currentTime;
+    const progress = Math.min((currentTime - startTime) / duration, 1);
+    const value = start + (end - start) * progress;
+
+    element.textContent = value.toFixed(2).replace(".", ",");
+
+    if (progress < 1) {
+      requestAnimationFrame(animation);
+    }
+  }
+
+  requestAnimationFrame(animation);
+}
+
+/* ---------- Local Storage ---------- */
+function saveData() {
+  localStorage.setItem("results", JSON.stringify(resultsArray));
+  localStorage.setItem("formula", formulaInput.value);
+}
+
+function loadData() {
+  const savedResults = JSON.parse(localStorage.getItem("results")) || [];
+  const savedFormula = localStorage.getItem("formula");
+
+  if (savedFormula) {
+    formulaInput.value = savedFormula;
+    setFormula(savedFormula);
+  }
+
+  savedResults.forEach(r => {
+    resultsArray.push(r);
+    createCardFromValue(r);
+  });
+
+  updateStats(false);
+}
+
+/* ---------- Gestion formule ---------- */
+function setFormula(formula) {
   if (!formula.includes("/")) return;
 
   const parts = formula.split("/");
@@ -106,9 +152,14 @@ formulaInput.addEventListener("change", () => {
     numerator = null;
     denominator = null;
   }
+}
+
+formulaInput.addEventListener("change", () => {
+  setFormula(formulaInput.value.trim());
+  saveData();
 });
 
-// Ajouter note
+/* ---------- Ajouter note ---------- */
 noteForm.addEventListener("submit", (e) => {
   e.preventDefault();
   if (!numerator) return alert("Entrer une formule valide.");
@@ -120,14 +171,17 @@ noteForm.addEventListener("submit", (e) => {
 
   addCard(note, result);
   updateStats();
+  animateValue(lastResultEl, 0, result);
 
+  saveData();
   noteForm.reset();
 });
 
+/* ---------- Cards ---------- */
 function addCard(note, result) {
   const formatted = result.toFixed(2).replace(".", ",");
-
   const card = document.createElement("div");
+
   card.className = `
     bg-white p-4 rounded-xl shadow relative group
     opacity-0 scale-95 transition-all duration-300
@@ -144,34 +198,45 @@ function addCard(note, result) {
     <p class="font-bold text-blue-600">${formatted}</p>
   `;
 
-  cardsContainer.appendChild(card);
+  cardsContainer.prepend(card);
 
   setTimeout(() => {
     card.classList.remove("opacity-0", "scale-95");
   }, 50);
 }
 
+function createCardFromValue(result) {
+  const formatted = result.toFixed(2).replace(".", ",");
+  const card = document.createElement("div");
+  card.className = "bg-white p-4 rounded-xl shadow relative";
+
+  card.innerHTML = `
+    <button onclick="removeCard(this)"
+      class="absolute top-2 right-2 text-red-400">
+      ✕
+    </button>
+    <p class="text-xs text-slate-500">Résultat</p>
+    <p class="font-bold text-blue-600">${formatted}</p>
+  `;
+
+  cardsContainer.prepend(card);
+}
+
 function removeCard(button) {
   const card = button.parentElement;
-  const resultValue = parseFloat(
+  const value = parseFloat(
     card.querySelector(".text-blue-600").textContent.replace(",", ".")
   );
 
-  card.classList.add("opacity-0", "scale-75");
-
-  setTimeout(() => {
-    card.remove();
-  }, 300);
-
-  const index = resultsArray.indexOf(resultValue);
-  if (index > -1) {
-    resultsArray.splice(index, 1);
-  }
+  resultsArray = resultsArray.filter(v => v !== value);
+  card.remove();
 
   updateStats();
+  saveData();
 }
 
-function updateStats() {
+/* ---------- Stats ---------- */
+function updateStats(animated = true) {
   const total = resultsArray.length;
   totalNotesEl.textContent = total;
 
@@ -179,6 +244,7 @@ function updateStats() {
     averageEl.textContent = "0,00";
     bestEl.textContent = "0,00";
     lowestEl.textContent = "0,00";
+    lastResultEl.textContent = "0,00";
     return;
   }
 
@@ -186,11 +252,23 @@ function updateStats() {
   const avg = sum / total;
   const best = Math.max(...resultsArray);
   const lowest = Math.min(...resultsArray);
+  const last = resultsArray[resultsArray.length - 1];
 
-  averageEl.textContent = avg.toFixed(2).replace(".", ",");
-  bestEl.textContent = best.toFixed(2).replace(".", ",");
-  lowestEl.textContent = lowest.toFixed(2).replace(".", ",");
+  if (animated) {
+    animateValue(averageEl, 0, avg);
+    animateValue(bestEl, 0, best);
+    animateValue(lowestEl, 0, lowest);
+  } else {
+    averageEl.textContent = avg.toFixed(2).replace(".", ",");
+    bestEl.textContent = best.toFixed(2).replace(".", ",");
+    lowestEl.textContent = lowest.toFixed(2).replace(".", ",");
+  }
+
+  lastResultEl.textContent = last.toFixed(2).replace(".", ",");
 }
+
+/* ---------- Initialisation ---------- */
+loadData();
 </script>
 
 </body>
