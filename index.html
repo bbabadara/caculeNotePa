@@ -4,147 +4,213 @@
   <meta charset="UTF-8">
   <title>Dashboard Notes</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
-<body class="bg-gradient-to-br from-slate-100 to-slate-200 min-h-screen p-8">
+<body class="bg-gradient-to-br from-slate-100 to-slate-200 min-h-screen p-6">
 
-  <div class="max-w-4xl mx-auto">
+<div class="max-w-7xl mx-auto">
 
-    <!-- Header -->
-    <div class="mb-8">
-      <h1 class="text-3xl font-bold text-slate-800">📊 Dashboard Notes</h1>
-      <p class="text-slate-500">Calcul automatique selon une formule fixe</p>
+  <!-- Header -->
+  <div class="flex justify-between items-center mb-6">
+    <h1 class="text-2xl font-bold text-slate-800">📊 Dashboard Notes</h1>
+    <div class="text-sm text-slate-500">Calcul automatique par formule</div>
+  </div>
+
+  <!-- Stats -->
+  <div class="grid grid-cols-3 gap-4 mb-6">
+    <div class="bg-white p-4 rounded-xl shadow">
+      <p class="text-xs text-slate-500">Total</p>
+      <h2 id="totalNotes" class="text-xl font-bold">0</h2>
+    </div>
+    <div class="bg-white p-4 rounded-xl shadow">
+      <p class="text-xs text-slate-500">Moyenne</p>
+      <h2 id="average" class="text-xl font-bold text-blue-600">0,00</h2>
+    </div>
+    <div class="bg-white p-4 rounded-xl shadow">
+      <p class="text-xs text-slate-500">Formule</p>
+      <h2 id="formulaDisplay" class="text-sm font-semibold text-slate-700">-</h2>
+    </div>
+  </div>
+
+  <!-- Layout principal -->
+  <div class="grid lg:grid-cols-3 gap-6">
+
+    <!-- Paramètres -->
+    <div class="bg-white p-6 rounded-2xl shadow">
+      <h2 class="font-semibold mb-4 text-slate-700">Paramètres</h2>
+
+      <input type="text" id="formula"
+        placeholder="Ex: 15/31"
+        class="w-full px-4 py-2 border rounded-xl mb-4 focus:ring-2 focus:ring-blue-400">
+
+      <form id="noteForm">
+        <input type="number" step="any" id="note"
+          placeholder="Entrer une note"
+          required
+          class="w-full px-4 py-2 border rounded-xl mb-4 focus:ring-2 focus:ring-blue-400">
+
+        <button class="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-xl transition transform hover:scale-105">
+          Ajouter
+        </button>
+      </form>
     </div>
 
-    <!-- Statistiques -->
-    <div class="grid grid-cols-2 gap-6 mb-8">
-      <div class="bg-white p-6 rounded-2xl shadow-md transition hover:shadow-xl">
-        <p class="text-slate-500 text-sm">Nombre de notes</p>
-        <h2 id="totalNotes" class="text-2xl font-bold text-slate-800">0</h2>
+    <!-- Cards -->
+    <div class="lg:col-span-2">
+      <div id="cardsContainer"
+        class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
       </div>
-
-      <div class="bg-white p-6 rounded-2xl shadow-md transition hover:shadow-xl">
-        <p class="text-slate-500 text-sm">Moyenne calculée</p>
-        <h2 id="average" class="text-2xl font-bold text-blue-600">0,00</h2>
-      </div>
-    </div>
-
-    <!-- Contenu principal -->
-    <div class="grid md:grid-cols-2 gap-8">
-
-      <!-- Formule + Ajout -->
-      <div class="bg-white p-6 rounded-2xl shadow-md">
-        <h2 class="font-semibold text-slate-700 mb-4">Paramètres</h2>
-
-        <label class="block text-sm text-slate-600 mb-1">Formule (ex: 15/31)</label>
-        <input type="text" id="formula"
-          class="w-full px-4 py-2 border rounded-xl mb-4 focus:ring-2 focus:ring-blue-400 focus:outline-none transition"
-          placeholder="Ex: 15/31">
-
-        <form id="noteForm">
-          <label class="block text-sm text-slate-600 mb-1">Note</label>
-          <input type="number" step="any" id="note" required
-            class="w-full px-4 py-2 border rounded-xl mb-4 focus:ring-2 focus:ring-blue-400 focus:outline-none transition"
-            placeholder="Ex: 14">
-
-          <button type="submit"
-            class="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-xl transition duration-300 transform hover:scale-105">
-            Ajouter
-          </button>
-        </form>
-      </div>
-
-      <!-- Liste -->
-      <div class="bg-white p-6 rounded-2xl shadow-md">
-        <h2 class="font-semibold text-slate-700 mb-4">Résultats</h2>
-        <div id="results" class="space-y-3 max-h-96 overflow-y-auto">
-        </div>
-      </div>
-
     </div>
 
   </div>
 
+  <!-- Graphique -->
+  <div class="bg-white p-6 rounded-2xl shadow mt-6">
+    <h2 class="font-semibold mb-4 text-slate-700">Graphique des résultats</h2>
+    <canvas id="chart"></canvas>
+  </div>
+
+</div>
+
 <script>
-  const formulaInput = document.getElementById("formula");
-  const noteForm = document.getElementById("noteForm");
-  const resultsDiv = document.getElementById("results");
-  const totalNotesEl = document.getElementById("totalNotes");
-  const averageEl = document.getElementById("average");
+const formulaInput = document.getElementById("formula");
+const noteForm = document.getElementById("noteForm");
+const cardsContainer = document.getElementById("cardsContainer");
+const totalNotesEl = document.getElementById("totalNotes");
+const averageEl = document.getElementById("average");
+const formulaDisplay = document.getElementById("formulaDisplay");
 
-  let numerator = null;
-  let denominator = null;
-  let resultsArray = [];
+let numerator = null;
+let denominator = null;
+let resultsArray = [];
+let labelsArray = [];
 
-  // Mise à jour formule
-  formulaInput.addEventListener("change", function () {
-    const formula = formulaInput.value.trim();
+const ctx = document.getElementById("chart").getContext("2d");
 
-    if (!formula.includes("/")) return;
-
-    const parts = formula.split("/");
-    numerator = parseFloat(parts[0]);
-    denominator = parseFloat(parts[1]);
-
-    if (isNaN(numerator) || isNaN(denominator) || denominator === 0) {
-      numerator = null;
-      denominator = null;
+const chart = new Chart(ctx, {
+  type: "bar",
+  data: {
+    labels: labelsArray,
+    datasets: [{
+      label: "Résultat",
+      data: resultsArray,
+      backgroundColor: "#3B82F6"
+    }]
+  },
+  options: {
+    responsive: true,
+    animation: {
+      duration: 800
+    },
+    scales: {
+      y: {
+        beginAtZero: true
+      }
     }
-  });
+  }
+});
 
-  // Ajout note
-  noteForm.addEventListener("submit", function (e) {
-    e.preventDefault();
+// Formule
+formulaInput.addEventListener("change", () => {
+  const formula = formulaInput.value.trim();
+  if (!formula.includes("/")) return;
 
-    if (numerator === null || denominator === null) {
-      alert("Veuillez entrer une formule valide.");
-      return;
-    }
+  const parts = formula.split("/");
+  numerator = parseFloat(parts[0]);
+  denominator = parseFloat(parts[1]);
 
-    const note = parseFloat(document.getElementById("note").value);
-    if (isNaN(note)) return;
-
-    const result = note * (numerator / denominator);
-    resultsArray.push(result);
-
-    addResultToUI(note, result);
-    updateStats();
-
-    noteForm.reset();
-  });
-
-  function addResultToUI(note, result) {
-    const formattedResult = result.toFixed(2).replace(".", ",");
-
-    const row = document.createElement("div");
-    row.className = `
-      flex justify-between items-center 
-      bg-slate-50 px-4 py-3 rounded-xl border
-      opacity-0 translate-y-3
-      transition-all duration-500
-    `;
-
-    row.innerHTML = `
-      <span class="font-medium text-slate-700">${note}</span>
-      <span class="font-semibold text-blue-600">${formattedResult}</span>
-    `;
-
-    resultsDiv.prepend(row);
-
-    // Animation apparition
-    setTimeout(() => {
-      row.classList.remove("opacity-0", "translate-y-3");
-    }, 50);
+  if (isNaN(numerator) || isNaN(denominator) || denominator === 0) {
+    numerator = null;
+    denominator = null;
+    formulaDisplay.textContent = "Invalide";
+    return;
   }
 
-  function updateStats() {
-    totalNotesEl.textContent = resultsArray.length;
+  formulaDisplay.textContent = `${numerator}/${denominator}`;
+});
 
-    const sum = resultsArray.reduce((a, b) => a + b, 0);
-    const avg = sum / resultsArray.length;
+// Ajouter note
+noteForm.addEventListener("submit", (e) => {
+  e.preventDefault();
+  if (!numerator) return alert("Entrer une formule valide.");
 
-    averageEl.textContent = avg.toFixed(2).replace(".", ",");
+  const note = parseFloat(document.getElementById("note").value);
+  const result = note * (numerator / denominator);
+
+  resultsArray.push(result);
+  labelsArray.push("N" + resultsArray.length);
+
+  addCard(note, result, resultsArray.length - 1);
+  updateStats();
+  updateChart();
+
+  noteForm.reset();
+});
+
+function addCard(note, result, index) {
+  const formatted = result.toFixed(2).replace(".", ",");
+
+  const card = document.createElement("div");
+  card.className = `
+    bg-white p-4 rounded-xl shadow
+    relative group
+    opacity-0 scale-95
+    transition-all duration-500
+  `;
+
+  card.innerHTML = `
+    <button onclick="removeCard(${index}, this)"
+      class="absolute top-2 right-2 text-red-400 opacity-0 group-hover:opacity-100 transition">
+      ✕
+    </button>
+    <p class="text-xs text-slate-500">Note</p>
+    <p class="font-bold text-slate-800">${note}</p>
+    <p class="text-xs text-slate-500 mt-2">Résultat</p>
+    <p class="font-bold text-blue-600">${formatted}</p>
+  `;
+
+  cardsContainer.appendChild(card);
+
+  setTimeout(() => {
+    card.classList.remove("opacity-0", "scale-95");
+  }, 50);
+}
+
+function removeCard(index, btn) {
+  const card = btn.parentElement;
+  card.classList.add("opacity-0", "scale-75");
+
+  setTimeout(() => {
+    card.remove();
+  }, 300);
+
+  resultsArray.splice(index, 1);
+  labelsArray.splice(index, 1);
+
+  updateStats();
+  updateChart();
+}
+
+function updateStats() {
+  totalNotesEl.textContent = resultsArray.length;
+
+  if (resultsArray.length === 0) {
+    averageEl.textContent = "0,00";
+    return;
   }
+
+  const sum = resultsArray.reduce((a, b) => a + b, 0);
+  const avg = sum / resultsArray.length;
+
+  averageEl.textContent = avg.toFixed(2).replace(".", ",");
+}
+
+function updateChart() {
+  chart.data.labels = labelsArray;
+  chart.data.datasets[0].data = resultsArray;
+  chart.update();
+}
 </script>
 
 </body>
