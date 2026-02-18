@@ -1,12 +1,20 @@
 <!DOCTYPE html>
-<html lang="fr" class="transition-colors duration-300">
+<html lang="fr">
 <head>
   <meta charset="UTF-8">
   <title>Dashboard Notes</title>
+
+  <!-- Configuration Dark Mode -->
+   <script>
+    tailwind.config = {
+      darkMode: 'class'
+    }
+  </script>
+
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 
-<body id="body" class="bg-slate-100 dark:bg-slate-900 min-h-screen p-4 sm:p-6 transition-colors duration-300">
+<body class="bg-slate-100 dark:bg-slate-900 min-h-screen p-4 sm:p-6 transition-colors duration-300">
 
 <div class="max-w-7xl mx-auto">
 
@@ -113,16 +121,20 @@ let numerator = null;
 let denominator = null;
 let resultsArray = [];
 
-/* ---------- Dark Mode ---------- */
+/* ---------- Initialisation thème ---------- */
 if (localStorage.getItem("theme") === "dark") {
   html.classList.add("dark");
 }
 
+/* ---------- Toggle ---------- */
 toggleThemeBtn.addEventListener("click", () => {
   html.classList.toggle("dark");
-  localStorage.setItem("theme",
-    html.classList.contains("dark") ? "dark" : "light"
-  );
+
+  if (html.classList.contains("dark")) {
+    localStorage.setItem("theme", "dark");
+  } else {
+    localStorage.setItem("theme", "light");
+  }
 });
 
 /* ---------- Local Storage ---------- */
@@ -140,9 +152,9 @@ function loadData() {
     setFormula(savedFormula);
   }
 
-  savedResults.forEach(r => {
-    resultsArray.push(r);
-    createCard(r);
+  savedResults.forEach(obj => {
+    resultsArray.push(obj);
+    createCard(obj.note, obj.result);
   });
 
   updateStats();
@@ -154,9 +166,10 @@ resetBtn.addEventListener("click", () => {
 
   resultsArray = [];
   cardsContainer.innerHTML = "";
-  localStorage.clear();
-  formulaInput.value = "";
+  localStorage.removeItem("results");
+  localStorage.removeItem("formula");
 
+  formulaInput.value = "";
   updateStats();
 });
 
@@ -187,8 +200,10 @@ noteForm.addEventListener("submit", (e) => {
   const note = parseFloat(document.getElementById("note").value);
   const result = note * (numerator / denominator);
 
-  resultsArray.push(result);
-  createCard(result);
+  const data = { note, result };
+  resultsArray.push(data);
+
+  createCard(note, result);
   updateStats();
   saveData();
 
@@ -196,7 +211,7 @@ noteForm.addEventListener("submit", (e) => {
 });
 
 /* ---------- Cards ---------- */
-function createCard(result) {
+function createCard(note, result) {
   const formatted = result.toFixed(2).replace(".", ",");
 
   const card = document.createElement("div");
@@ -207,7 +222,9 @@ function createCard(result) {
       class="absolute top-2 right-2 text-red-400">
       ✕
     </button>
-    <p class="text-xs text-slate-500">Résultat</p>
+    <p class="text-xs text-slate-500">Note</p>
+    <p class="font-bold dark:text-white">${note}</p>
+    <p class="text-xs text-slate-500 mt-2">Résultat</p>
     <p class="font-bold text-blue-600">${formatted}</p>
   `;
 
@@ -216,11 +233,9 @@ function createCard(result) {
 
 function removeCard(button) {
   const card = button.parentElement;
-  const value = parseFloat(
-    card.querySelector(".text-blue-600").textContent.replace(",", ".")
-  );
+  const note = parseFloat(card.querySelector(".font-bold").textContent);
 
-  resultsArray = resultsArray.filter(v => v !== value);
+  resultsArray = resultsArray.filter(obj => obj.note !== note);
   card.remove();
   updateStats();
   saveData();
@@ -239,11 +254,12 @@ function updateStats() {
     return;
   }
 
-  const sum = resultsArray.reduce((a, b) => a + b, 0);
+  const values = resultsArray.map(obj => obj.result);
+  const sum = values.reduce((a, b) => a + b, 0);
   const avg = sum / total;
-  const best = Math.max(...resultsArray);
-  const lowest = Math.min(...resultsArray);
-  const last = resultsArray[resultsArray.length - 1];
+  const best = Math.max(...values);
+  const lowest = Math.min(...values);
+  const last = values[values.length - 1];
 
   averageEl.textContent = avg.toFixed(2).replace(".", ",");
   bestEl.textContent = best.toFixed(2).replace(".", ",");
