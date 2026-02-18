@@ -1,41 +1,53 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="fr" class="transition-colors duration-300">
 <head>
   <meta charset="UTF-8">
   <title>Dashboard Notes</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 
-<body class="bg-gradient-to-br from-slate-100 to-slate-200 min-h-screen p-4 sm:p-6">
+<body id="body" class="bg-slate-100 dark:bg-slate-900 min-h-screen p-4 sm:p-6 transition-colors duration-300">
 
 <div class="max-w-7xl mx-auto">
 
   <!-- Header -->
-  <div class="mb-6">
-    <h1 class="text-2xl sm:text-3xl font-bold text-slate-800">
+  <div class="flex justify-between items-center mb-6">
+    <h1 class="text-2xl sm:text-3xl font-bold text-slate-800 dark:text-white">
       📊 Dashboard Notes
     </h1>
+
+    <div class="flex gap-2">
+      <button id="toggleTheme"
+        class="px-4 py-2 rounded-xl bg-slate-800 text-white dark:bg-white dark:text-slate-900 transition">
+        🌙 / ☀
+      </button>
+
+      <button id="resetAll"
+        class="px-4 py-2 rounded-xl bg-red-500 text-white hover:bg-red-600 transition">
+        Reset
+      </button>
+    </div>
   </div>
 
   <!-- Stats -->
   <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
 
-    <div class="bg-white p-4 rounded-xl shadow">
+    <div class="bg-white dark:bg-slate-800 p-4 rounded-xl shadow">
       <p class="text-xs text-slate-500">Total</p>
-      <h2 id="totalNotes" class="text-lg font-bold">0</h2>
+      <h2 id="totalNotes" class="text-lg font-bold dark:text-white">0</h2>
     </div>
 
-    <div class="bg-white p-4 rounded-xl shadow">
+    <div class="bg-white dark:bg-slate-800 p-4 rounded-xl shadow">
       <p class="text-xs text-slate-500">Moyenne</p>
       <h2 id="average" class="text-lg font-bold text-blue-600">0,00</h2>
     </div>
 
-    <div class="bg-white p-4 rounded-xl shadow">
+    <div class="bg-white dark:bg-slate-800 p-4 rounded-xl shadow">
       <p class="text-xs text-slate-500">Meilleure</p>
       <h2 id="best" class="text-lg font-bold text-green-600">0,00</h2>
     </div>
 
-    <div class="bg-white p-4 rounded-xl shadow">
+    <div class="bg-white dark:bg-slate-800 p-4 rounded-xl shadow">
       <p class="text-xs text-slate-500">Plus faible</p>
       <h2 id="lowest" class="text-lg font-bold text-red-500">0,00</h2>
     </div>
@@ -45,9 +57,8 @@
   <div class="grid lg:grid-cols-3 gap-6">
 
     <!-- Partie gauche -->
-    <div class="bg-white p-6 rounded-2xl shadow">
+    <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow">
 
-      <!-- Dernier résultat -->
       <div class="mb-6 text-center">
         <p class="text-xs text-slate-500">Dernier résultat</p>
         <h2 id="lastResult" class="text-3xl font-bold text-blue-600">
@@ -57,15 +68,15 @@
 
       <input type="text" id="formula"
         placeholder="Ex: 15/31"
-        class="w-full px-4 py-2 border rounded-xl mb-4 focus:ring-2 focus:ring-blue-400">
+        class="w-full px-4 py-2 border rounded-xl mb-4 dark:bg-slate-700 dark:text-white">
 
       <form id="noteForm">
         <input type="number" step="any" id="note"
           placeholder="Entrer une note"
           required
-          class="w-full px-4 py-2 border rounded-xl mb-4 focus:ring-2 focus:ring-blue-400">
+          class="w-full px-4 py-2 border rounded-xl mb-4 dark:bg-slate-700 dark:text-white">
 
-        <button class="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-xl transition transform hover:scale-105">
+        <button class="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-xl transition">
           Ajouter
         </button>
       </form>
@@ -84,6 +95,10 @@
 </div>
 
 <script>
+const html = document.documentElement;
+const toggleThemeBtn = document.getElementById("toggleTheme");
+const resetBtn = document.getElementById("resetAll");
+
 const formulaInput = document.getElementById("formula");
 const noteForm = document.getElementById("noteForm");
 const cardsContainer = document.getElementById("cardsContainer");
@@ -98,24 +113,17 @@ let numerator = null;
 let denominator = null;
 let resultsArray = [];
 
-/* ---------- Animation chiffre ---------- */
-function animateValue(element, start, end, duration = 600) {
-  let startTime = null;
-
-  function animation(currentTime) {
-    if (!startTime) startTime = currentTime;
-    const progress = Math.min((currentTime - startTime) / duration, 1);
-    const value = start + (end - start) * progress;
-
-    element.textContent = value.toFixed(2).replace(".", ",");
-
-    if (progress < 1) {
-      requestAnimationFrame(animation);
-    }
-  }
-
-  requestAnimationFrame(animation);
+/* ---------- Dark Mode ---------- */
+if (localStorage.getItem("theme") === "dark") {
+  html.classList.add("dark");
 }
+
+toggleThemeBtn.addEventListener("click", () => {
+  html.classList.toggle("dark");
+  localStorage.setItem("theme",
+    html.classList.contains("dark") ? "dark" : "light"
+  );
+});
 
 /* ---------- Local Storage ---------- */
 function saveData() {
@@ -134,13 +142,25 @@ function loadData() {
 
   savedResults.forEach(r => {
     resultsArray.push(r);
-    createCardFromValue(r);
+    createCard(r);
   });
 
-  updateStats(false);
+  updateStats();
 }
 
-/* ---------- Gestion formule ---------- */
+/* ---------- Reset ---------- */
+resetBtn.addEventListener("click", () => {
+  if (!confirm("Tout supprimer ?")) return;
+
+  resultsArray = [];
+  cardsContainer.innerHTML = "";
+  localStorage.clear();
+  formulaInput.value = "";
+
+  updateStats();
+});
+
+/* ---------- Formule ---------- */
 function setFormula(formula) {
   if (!formula.includes("/")) return;
 
@@ -159,7 +179,7 @@ formulaInput.addEventListener("change", () => {
   saveData();
 });
 
-/* ---------- Ajouter note ---------- */
+/* ---------- Ajouter ---------- */
 noteForm.addEventListener("submit", (e) => {
   e.preventDefault();
   if (!numerator) return alert("Entrer une formule valide.");
@@ -168,47 +188,19 @@ noteForm.addEventListener("submit", (e) => {
   const result = note * (numerator / denominator);
 
   resultsArray.push(result);
-
-  addCard(note, result);
+  createCard(result);
   updateStats();
-  animateValue(lastResultEl, 0, result);
-
   saveData();
+
   noteForm.reset();
 });
 
 /* ---------- Cards ---------- */
-function addCard(note, result) {
+function createCard(result) {
   const formatted = result.toFixed(2).replace(".", ",");
+
   const card = document.createElement("div");
-
-  card.className = `
-    bg-white p-4 rounded-xl shadow relative group
-    opacity-0 scale-95 transition-all duration-300
-  `;
-
-  card.innerHTML = `
-    <button onclick="removeCard(this)"
-      class="absolute top-2 right-2 text-red-400 opacity-0 group-hover:opacity-100 transition">
-      ✕
-    </button>
-    <p class="text-xs text-slate-500">Note</p>
-    <p class="font-bold text-slate-800">${note}</p>
-    <p class="text-xs text-slate-500 mt-2">Résultat</p>
-    <p class="font-bold text-blue-600">${formatted}</p>
-  `;
-
-  cardsContainer.prepend(card);
-
-  setTimeout(() => {
-    card.classList.remove("opacity-0", "scale-95");
-  }, 50);
-}
-
-function createCardFromValue(result) {
-  const formatted = result.toFixed(2).replace(".", ",");
-  const card = document.createElement("div");
-  card.className = "bg-white p-4 rounded-xl shadow relative";
+  card.className = "bg-white dark:bg-slate-800 p-4 rounded-xl shadow relative";
 
   card.innerHTML = `
     <button onclick="removeCard(this)"
@@ -230,13 +222,12 @@ function removeCard(button) {
 
   resultsArray = resultsArray.filter(v => v !== value);
   card.remove();
-
   updateStats();
   saveData();
 }
 
 /* ---------- Stats ---------- */
-function updateStats(animated = true) {
+function updateStats() {
   const total = resultsArray.length;
   totalNotesEl.textContent = total;
 
@@ -254,20 +245,13 @@ function updateStats(animated = true) {
   const lowest = Math.min(...resultsArray);
   const last = resultsArray[resultsArray.length - 1];
 
-  if (animated) {
-    animateValue(averageEl, 0, avg);
-    animateValue(bestEl, 0, best);
-    animateValue(lowestEl, 0, lowest);
-  } else {
-    averageEl.textContent = avg.toFixed(2).replace(".", ",");
-    bestEl.textContent = best.toFixed(2).replace(".", ",");
-    lowestEl.textContent = lowest.toFixed(2).replace(".", ",");
-  }
-
+  averageEl.textContent = avg.toFixed(2).replace(".", ",");
+  bestEl.textContent = best.toFixed(2).replace(".", ",");
+  lowestEl.textContent = lowest.toFixed(2).replace(".", ",");
   lastResultEl.textContent = last.toFixed(2).replace(".", ",");
 }
 
-/* ---------- Initialisation ---------- */
+/* ---------- Init ---------- */
 loadData();
 </script>
 
