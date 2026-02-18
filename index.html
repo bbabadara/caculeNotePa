@@ -4,33 +4,43 @@
   <meta charset="UTF-8">
   <title>Dashboard Notes</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
-<body class="bg-gradient-to-br from-slate-100 to-slate-200 min-h-screen p-6">
+<body class="bg-gradient-to-br from-slate-100 to-slate-200 min-h-screen p-4 sm:p-6">
 
 <div class="max-w-7xl mx-auto">
 
   <!-- Header -->
-  <div class="flex justify-between items-center mb-6">
-    <h1 class="text-2xl font-bold text-slate-800">📊 Dashboard Notes</h1>
-    <div class="text-sm text-slate-500">Calcul automatique par formule</div>
+  <div class="mb-6">
+    <h1 class="text-2xl sm:text-3xl font-bold text-slate-800">
+      📊 Dashboard Notes
+    </h1>
+    <p class="text-slate-500 text-sm">Calcul automatique par formule</p>
   </div>
 
-  <!-- Stats -->
-  <div class="grid grid-cols-3 gap-4 mb-6">
+  <!-- Stats Responsive -->
+  <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+
     <div class="bg-white p-4 rounded-xl shadow">
       <p class="text-xs text-slate-500">Total</p>
-      <h2 id="totalNotes" class="text-xl font-bold">0</h2>
+      <h2 id="totalNotes" class="text-lg font-bold">0</h2>
     </div>
+
     <div class="bg-white p-4 rounded-xl shadow">
       <p class="text-xs text-slate-500">Moyenne</p>
-      <h2 id="average" class="text-xl font-bold text-blue-600">0,00</h2>
+      <h2 id="average" class="text-lg font-bold text-blue-600">0,00</h2>
     </div>
+
     <div class="bg-white p-4 rounded-xl shadow">
-      <p class="text-xs text-slate-500">Formule</p>
-      <h2 id="formulaDisplay" class="text-sm font-semibold text-slate-700">-</h2>
+      <p class="text-xs text-slate-500">Meilleure</p>
+      <h2 id="best" class="text-lg font-bold text-green-600">0,00</h2>
     </div>
+
+    <div class="bg-white p-4 rounded-xl shadow">
+      <p class="text-xs text-slate-500">Plus faible</p>
+      <h2 id="lowest" class="text-lg font-bold text-red-500">0,00</h2>
+    </div>
+
   </div>
 
   <!-- Layout principal -->
@@ -38,37 +48,33 @@
 
     <!-- Paramètres -->
     <div class="bg-white p-6 rounded-2xl shadow">
+
       <h2 class="font-semibold mb-4 text-slate-700">Paramètres</h2>
 
       <input type="text" id="formula"
         placeholder="Ex: 15/31"
-        class="w-full px-4 py-2 border rounded-xl mb-4 focus:ring-2 focus:ring-blue-400">
+        class="w-full px-4 py-2 border rounded-xl mb-4 focus:ring-2 focus:ring-blue-400 focus:outline-none">
 
       <form id="noteForm">
         <input type="number" step="any" id="note"
           placeholder="Entrer une note"
           required
-          class="w-full px-4 py-2 border rounded-xl mb-4 focus:ring-2 focus:ring-blue-400">
+          class="w-full px-4 py-2 border rounded-xl mb-4 focus:ring-2 focus:ring-blue-400 focus:outline-none">
 
         <button class="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-xl transition transform hover:scale-105">
           Ajouter
         </button>
       </form>
+
     </div>
 
     <!-- Cards -->
     <div class="lg:col-span-2">
       <div id="cardsContainer"
-        class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
       </div>
     </div>
 
-  </div>
-
-  <!-- Graphique -->
-  <div class="bg-white p-6 rounded-2xl shadow mt-6">
-    <h2 class="font-semibold mb-4 text-slate-700">Graphique des résultats</h2>
-    <canvas id="chart"></canvas>
   </div>
 
 </div>
@@ -77,39 +83,15 @@
 const formulaInput = document.getElementById("formula");
 const noteForm = document.getElementById("noteForm");
 const cardsContainer = document.getElementById("cardsContainer");
+
 const totalNotesEl = document.getElementById("totalNotes");
 const averageEl = document.getElementById("average");
-const formulaDisplay = document.getElementById("formulaDisplay");
+const bestEl = document.getElementById("best");
+const lowestEl = document.getElementById("lowest");
 
 let numerator = null;
 let denominator = null;
 let resultsArray = [];
-let labelsArray = [];
-
-const ctx = document.getElementById("chart").getContext("2d");
-
-const chart = new Chart(ctx, {
-  type: "bar",
-  data: {
-    labels: labelsArray,
-    datasets: [{
-      label: "Résultat",
-      data: resultsArray,
-      backgroundColor: "#3B82F6"
-    }]
-  },
-  options: {
-    responsive: true,
-    animation: {
-      duration: 800
-    },
-    scales: {
-      y: {
-        beginAtZero: true
-      }
-    }
-  }
-});
 
 // Formule
 formulaInput.addEventListener("change", () => {
@@ -123,11 +105,7 @@ formulaInput.addEventListener("change", () => {
   if (isNaN(numerator) || isNaN(denominator) || denominator === 0) {
     numerator = null;
     denominator = null;
-    formulaDisplay.textContent = "Invalide";
-    return;
   }
-
-  formulaDisplay.textContent = `${numerator}/${denominator}`;
 });
 
 // Ajouter note
@@ -139,28 +117,24 @@ noteForm.addEventListener("submit", (e) => {
   const result = note * (numerator / denominator);
 
   resultsArray.push(result);
-  labelsArray.push("N" + resultsArray.length);
 
-  addCard(note, result, resultsArray.length - 1);
+  addCard(note, result);
   updateStats();
-  updateChart();
 
   noteForm.reset();
 });
 
-function addCard(note, result, index) {
+function addCard(note, result) {
   const formatted = result.toFixed(2).replace(".", ",");
 
   const card = document.createElement("div");
   card.className = `
-    bg-white p-4 rounded-xl shadow
-    relative group
-    opacity-0 scale-95
-    transition-all duration-500
+    bg-white p-4 rounded-xl shadow relative group
+    opacity-0 scale-95 transition-all duration-300
   `;
 
   card.innerHTML = `
-    <button onclick="removeCard(${index}, this)"
+    <button onclick="removeCard(this)"
       class="absolute top-2 right-2 text-red-400 opacity-0 group-hover:opacity-100 transition">
       ✕
     </button>
@@ -177,39 +151,45 @@ function addCard(note, result, index) {
   }, 50);
 }
 
-function removeCard(index, btn) {
-  const card = btn.parentElement;
+function removeCard(button) {
+  const card = button.parentElement;
+  const resultValue = parseFloat(
+    card.querySelector(".text-blue-600").textContent.replace(",", ".")
+  );
+
   card.classList.add("opacity-0", "scale-75");
 
   setTimeout(() => {
     card.remove();
   }, 300);
 
-  resultsArray.splice(index, 1);
-  labelsArray.splice(index, 1);
+  const index = resultsArray.indexOf(resultValue);
+  if (index > -1) {
+    resultsArray.splice(index, 1);
+  }
 
   updateStats();
-  updateChart();
 }
 
 function updateStats() {
-  totalNotesEl.textContent = resultsArray.length;
+  const total = resultsArray.length;
+  totalNotesEl.textContent = total;
 
-  if (resultsArray.length === 0) {
+  if (total === 0) {
     averageEl.textContent = "0,00";
+    bestEl.textContent = "0,00";
+    lowestEl.textContent = "0,00";
     return;
   }
 
   const sum = resultsArray.reduce((a, b) => a + b, 0);
-  const avg = sum / resultsArray.length;
+  const avg = sum / total;
+  const best = Math.max(...resultsArray);
+  const lowest = Math.min(...resultsArray);
 
   averageEl.textContent = avg.toFixed(2).replace(".", ",");
-}
-
-function updateChart() {
-  chart.data.labels = labelsArray;
-  chart.data.datasets[0].data = resultsArray;
-  chart.update();
+  bestEl.textContent = best.toFixed(2).replace(".", ",");
+  lowestEl.textContent = lowest.toFixed(2).replace(".", ",");
 }
 </script>
 
