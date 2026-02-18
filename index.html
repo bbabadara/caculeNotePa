@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Calculateur de Notes</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-6">
+
+  <div class="w-full max-w-xl bg-white rounded-2xl shadow-lg p-8">
+    
+    <h1 class="text-2xl font-semibold text-gray-800 mb-6 text-center">
+      Calculateur de Notes
+    </h1>
+
+    <!-- Résultats -->
+    <div class="mb-6">
+      <h2 class="text-sm font-medium text-gray-500 mb-3 uppercase tracking-wide">
+        Résultats
+      </h2>
+      <div id="results" class="space-y-2">
+      </div>
+    </div>
+
+    <!-- Formule (fixe jusqu'à changement) -->
+    <div class="mb-6">
+      <label class="block text-sm text-gray-600 mb-1">
+        Formule (ex: 15/31)
+      </label>
+      <input 
+        type="text" 
+        id="formula"
+        class="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400"
+        placeholder="Ex: 15/31"
+      >
+      <p id="formulaStatus" class="text-xs text-gray-400 mt-1"></p>
+    </div>
+
+    <!-- Formulaire Note uniquement -->
+    <form id="noteForm" class="space-y-4">
+      <div>
+        <label class="block text-sm text-gray-600 mb-1">Note</label>
+        <input 
+          type="number" 
+          step="any"
+          id="note"
+          required
+          class="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400"
+          placeholder="Ex: 14"
+        >
+      </div>
+
+      <button 
+        type="submit"
+        class="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-xl transition duration-200"
+      >
+        Ajouter la note
+      </button>
+    </form>
+
+  </div>
+
+<script>
+  const formulaInput = document.getElementById("formula");
+  const noteForm = document.getElementById("noteForm");
+  const resultsDiv = document.getElementById("results");
+  const formulaStatus = document.getElementById("formulaStatus");
+
+  let numerator = null;
+  let denominator = null;
+
+  // Mise à jour de la formule quand elle change
+  formulaInput.addEventListener("change", function() {
+    const formula = formulaInput.value.trim();
+
+    if (!formula.includes("/")) {
+      formulaStatus.textContent = "Format invalide (ex: 15/31)";
+      formulaStatus.className = "text-xs text-red-500 mt-1";
+      numerator = null;
+      denominator = null;
+      return;
+    }
+
+    const parts = formula.split("/");
+    numerator = parseFloat(parts[0]);
+    denominator = parseFloat(parts[1]);
+
+    if (isNaN(numerator) || isNaN(denominator) || denominator === 0) {
+      formulaStatus.textContent = "Valeurs invalides.";
+      formulaStatus.className = "text-xs text-red-500 mt-1";
+      numerator = null;
+      denominator = null;
+      return;
+    }
+
+    formulaStatus.textContent = `Formule enregistrée : × (${numerator}/${denominator})`;
+    formulaStatus.className = "text-xs text-green-500 mt-1";
+  });
+
+  // Ajout des notes
+  noteForm.addEventListener("submit", function(e) {
+    e.preventDefault();
+
+    if (numerator === null || denominator === null) {
+      alert("Veuillez entrer une formule valide d'abord.");
+      return;
+    }
+
+    const note = parseFloat(document.getElementById("note").value);
+
+    if (isNaN(note)) return;
+
+    const result = note * (numerator / denominator);
+    const formattedResult = result.toFixed(2).replace(".", ",");
+
+    const row = document.createElement("div");
+    row.className = "flex justify-between items-center bg-gray-50 px-4 py-2 rounded-xl border";
+
+    row.innerHTML = `
+      <span class="font-medium text-gray-700">${note}</span>
+      <span class="text-blue-600 font-semibold">${formattedResult}</span>
+    `;
+
+    resultsDiv.prepend(row);
+    noteForm.reset();
+  });
+</script>
+
+</body>
+</html>
