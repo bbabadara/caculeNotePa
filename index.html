@@ -2,61 +2,66 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>Calculateur de Notes</title>
+  <title>Dashboard Notes</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-100 min-h-screen flex items-center justify-center p-6">
 
-  <div class="w-full max-w-xl bg-white rounded-2xl shadow-lg p-8">
-    
-    <h1 class="text-2xl font-semibold text-gray-800 mb-6 text-center">
-      Calculateur de Notes
-    </h1>
+<body class="bg-gradient-to-br from-slate-100 to-slate-200 min-h-screen p-8">
 
-    <!-- Résultats -->
-    <div class="mb-6">
-      <h2 class="text-sm font-medium text-gray-500 mb-3 uppercase tracking-wide">
-        Résultats
-      </h2>
-      <div id="results" class="space-y-2">
+  <div class="max-w-4xl mx-auto">
+
+    <!-- Header -->
+    <div class="mb-8">
+      <h1 class="text-3xl font-bold text-slate-800">📊 Dashboard Notes</h1>
+      <p class="text-slate-500">Calcul automatique selon une formule fixe</p>
+    </div>
+
+    <!-- Statistiques -->
+    <div class="grid grid-cols-2 gap-6 mb-8">
+      <div class="bg-white p-6 rounded-2xl shadow-md transition hover:shadow-xl">
+        <p class="text-slate-500 text-sm">Nombre de notes</p>
+        <h2 id="totalNotes" class="text-2xl font-bold text-slate-800">0</h2>
+      </div>
+
+      <div class="bg-white p-6 rounded-2xl shadow-md transition hover:shadow-xl">
+        <p class="text-slate-500 text-sm">Moyenne calculée</p>
+        <h2 id="average" class="text-2xl font-bold text-blue-600">0,00</h2>
       </div>
     </div>
 
-    <!-- Formule (fixe jusqu'à changement) -->
-    <div class="mb-6">
-      <label class="block text-sm text-gray-600 mb-1">
-        Formule (ex: 15/31)
-      </label>
-      <input 
-        type="text" 
-        id="formula"
-        class="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400"
-        placeholder="Ex: 15/31"
-      >
-      <p id="formulaStatus" class="text-xs text-gray-400 mt-1"></p>
-    </div>
+    <!-- Contenu principal -->
+    <div class="grid md:grid-cols-2 gap-8">
 
-    <!-- Formulaire Note uniquement -->
-    <form id="noteForm" class="space-y-4">
-      <div>
-        <label class="block text-sm text-gray-600 mb-1">Note</label>
-        <input 
-          type="number" 
-          step="any"
-          id="note"
-          required
-          class="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400"
-          placeholder="Ex: 14"
-        >
+      <!-- Formule + Ajout -->
+      <div class="bg-white p-6 rounded-2xl shadow-md">
+        <h2 class="font-semibold text-slate-700 mb-4">Paramètres</h2>
+
+        <label class="block text-sm text-slate-600 mb-1">Formule (ex: 15/31)</label>
+        <input type="text" id="formula"
+          class="w-full px-4 py-2 border rounded-xl mb-4 focus:ring-2 focus:ring-blue-400 focus:outline-none transition"
+          placeholder="Ex: 15/31">
+
+        <form id="noteForm">
+          <label class="block text-sm text-slate-600 mb-1">Note</label>
+          <input type="number" step="any" id="note" required
+            class="w-full px-4 py-2 border rounded-xl mb-4 focus:ring-2 focus:ring-blue-400 focus:outline-none transition"
+            placeholder="Ex: 14">
+
+          <button type="submit"
+            class="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-xl transition duration-300 transform hover:scale-105">
+            Ajouter
+          </button>
+        </form>
       </div>
 
-      <button 
-        type="submit"
-        class="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-xl transition duration-200"
-      >
-        Ajouter la note
-      </button>
-    </form>
+      <!-- Liste -->
+      <div class="bg-white p-6 rounded-2xl shadow-md">
+        <h2 class="font-semibold text-slate-700 mb-4">Résultats</h2>
+        <div id="results" class="space-y-3 max-h-96 overflow-y-auto">
+        </div>
+      </div>
+
+    </div>
 
   </div>
 
@@ -64,66 +69,82 @@
   const formulaInput = document.getElementById("formula");
   const noteForm = document.getElementById("noteForm");
   const resultsDiv = document.getElementById("results");
-  const formulaStatus = document.getElementById("formulaStatus");
+  const totalNotesEl = document.getElementById("totalNotes");
+  const averageEl = document.getElementById("average");
 
   let numerator = null;
   let denominator = null;
+  let resultsArray = [];
 
-  // Mise à jour de la formule quand elle change
-  formulaInput.addEventListener("change", function() {
+  // Mise à jour formule
+  formulaInput.addEventListener("change", function () {
     const formula = formulaInput.value.trim();
 
-    if (!formula.includes("/")) {
-      formulaStatus.textContent = "Format invalide (ex: 15/31)";
-      formulaStatus.className = "text-xs text-red-500 mt-1";
-      numerator = null;
-      denominator = null;
-      return;
-    }
+    if (!formula.includes("/")) return;
 
     const parts = formula.split("/");
     numerator = parseFloat(parts[0]);
     denominator = parseFloat(parts[1]);
 
     if (isNaN(numerator) || isNaN(denominator) || denominator === 0) {
-      formulaStatus.textContent = "Valeurs invalides.";
-      formulaStatus.className = "text-xs text-red-500 mt-1";
       numerator = null;
       denominator = null;
-      return;
     }
-
-    formulaStatus.textContent = `Formule enregistrée : × (${numerator}/${denominator})`;
-    formulaStatus.className = "text-xs text-green-500 mt-1";
   });
 
-  // Ajout des notes
-  noteForm.addEventListener("submit", function(e) {
+  // Ajout note
+  noteForm.addEventListener("submit", function (e) {
     e.preventDefault();
 
     if (numerator === null || denominator === null) {
-      alert("Veuillez entrer une formule valide d'abord.");
+      alert("Veuillez entrer une formule valide.");
       return;
     }
 
     const note = parseFloat(document.getElementById("note").value);
-
     if (isNaN(note)) return;
 
     const result = note * (numerator / denominator);
+    resultsArray.push(result);
+
+    addResultToUI(note, result);
+    updateStats();
+
+    noteForm.reset();
+  });
+
+  function addResultToUI(note, result) {
     const formattedResult = result.toFixed(2).replace(".", ",");
 
     const row = document.createElement("div");
-    row.className = "flex justify-between items-center bg-gray-50 px-4 py-2 rounded-xl border";
+    row.className = `
+      flex justify-between items-center 
+      bg-slate-50 px-4 py-3 rounded-xl border
+      opacity-0 translate-y-3
+      transition-all duration-500
+    `;
 
     row.innerHTML = `
-      <span class="font-medium text-gray-700">${note}</span>
-      <span class="text-blue-600 font-semibold">${formattedResult}</span>
+      <span class="font-medium text-slate-700">${note}</span>
+      <span class="font-semibold text-blue-600">${formattedResult}</span>
     `;
 
     resultsDiv.prepend(row);
-    noteForm.reset();
-  });
+
+    // Animation apparition
+    setTimeout(() => {
+      row.classList.remove("opacity-0", "translate-y-3");
+    }, 50);
+  }
+
+  function updateStats() {
+    totalNotesEl.textContent = resultsArray.length;
+
+    const sum = resultsArray.reduce((a, b) => a + b, 0);
+    const avg = sum / resultsArray.length;
+
+    averageEl.textContent = avg.toFixed(2).replace(".", ",");
+  }
 </script>
 
 </body>
